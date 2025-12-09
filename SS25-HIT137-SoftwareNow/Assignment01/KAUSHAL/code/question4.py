@@ -17,28 +17,29 @@
 # Title case: The Quick Brown Fox
 # Reversed: xof nworb kciuq ehT
 
-sentence = input("Enter a sentence")
-split_sentence = sentence.split(" ")
+
+import string # importing for punctuation
+# taking user input (a sentence)
+sentence = input("\nEnter a sentence:\t").strip()
+# use strip to remove punctuation(like ,) and split for splitting sentence, handling multiple spaces & tabs
+split_sentence = [word.strip(string.punctuation) for word in sentence.split()]
 total_words = len(split_sentence)
 
-temp = 0
-for word in split_sentence:
-    count_letter = len(word)
-    if count_letter > temp:
-        longest_count = count_letter
-    else:
-        longest_count = temp
-    temp = longest_count
+# find longest word in the given list(split_sentence) based on length of word
+# note: gives first longest word (eg: A quick brown fox -> quick and brown has 5 letters but output is 'quick')
+longest_word = max(split_sentence, key=len) 
+longest_count = len(longest_word)
 
-longest_word = [w for w in split_sentence if len(w) == longest_count][0]
-longest_word = "".join(longest_word) #note: it returns first longest word, need to exclude ,.(now included)
+# using functions - upper(), lower() and title()
 upper_case = sentence.upper()
 lower_case = sentence.lower()
 title_case = sentence.title()
-reversed_sentence = "".join(reversed(sentence))
+# slice that returns the string in reverse order
+reversed_sentence = sentence[::-1]
 
+# outputs according to question
 print(f'Total words: {total_words}')
-print(f'Longest word: {longest_word} ({longest_count}) letters')
+print(f'Longest word: {longest_word.title()} ({longest_count} letters)')
 print(f'Uppercase: {upper_case}')
 print(f'Lowercase: {lower_case}')
 print(f'Title case: {title_case}')

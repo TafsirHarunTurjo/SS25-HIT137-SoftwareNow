@@ -22,31 +22,59 @@
 # Highest: Bob (92)
 # Lowest: Carol (45)
 
-#Do using dict
+# taking input(number of students) from user
+number_of_student = int(input('\tHow many students?(3-10)'))
 
-number_of_student = int(input('How many students?'))
-name_of_students = []
+# retake input if number of students is greater than 10 or less than 3
+while number_of_student < 3 or number_of_student > 10:
+    number_of_student = int(input('Enter value within the range 3 to 10(included) '))
+
+# initiate list for name of students and their corrosponding scores
+name_of_students = [] 
 score_of_students = []
-sum = 0
+
+sum = 0 
 for s in range(1,number_of_student+1):
-    name = input(f'Enter the name of student-{s}')
-    name_of_students.append(name)
-    score = int(input(f'Enter the score(0-100) of student-{s}'))
-    score_of_students.append(score)
-    sum = sum + score
+    # Loop to take only valid names (letters only)
+    while True:
+        name = input(f'Enter the name of student-{s}\t')
+        # strip() removes all leading and trailing spaces. 
+        # It takes valid name(eg. Hari or Hari Thapa, but not Hari123 or " ")
+        if all(char.isalpha() or char.isspace() for char in name) and name.strip():  # all() checks for every char
+            break
+        else:
+            print("Invalid input! Please enter letters only (no numbers or symbols).")
+
+    name_of_students.append(name) # put each name in the list
+    score = int(input(f'Enter the score(0-100) of student-{s}\t'))
+
+    # retake score if the value is negative or greater than 100
+    while score < 0 or score > 100:
+        score = int(input("Enter again.Score must be between 0 and 100(included)\t"))
+    score_of_students.append(score) # put each score in the list
+
+    # used to calculate the sum of score of all student to get average value
+    sum = sum + score 
 
 average_score = sum / number_of_student
 highest_score = max(score_of_students)
-idx_highest_score = score_of_students.index(highest_score)
 lowest_score = min(score_of_students)
-idx_lowest_score = score_of_students.index(lowest_score)
 
+# get indices of all students with highest and lowest scores
+# list comprehension using enumerate function(to get both value and index)
+idx_highest_scores = [i for i, score in enumerate(score_of_students) if score == highest_score]
+idx_lowest_scores = [i for i, score in enumerate(score_of_students) if score == lowest_score]
+
+
+# name and score of each student
+print("\n")
 for i in range(number_of_student):
     print(f'Student {i+1} name: {name_of_students[i]}')
     print(f"{name_of_students[i]}'s score: {score_of_students[i]}")
 
 print('Results:')
 
+# Results of student as per grade criteria
 for i in range(number_of_student):
     if 100 >= score_of_students[i] >= 85:
         print(f'{name_of_students[i]}: {score_of_students[i]} (HD)')
@@ -63,9 +91,15 @@ for i in range(number_of_student):
     elif 49 >= score_of_students[i] >= 0:
         print(f'{name_of_students[i]}: {score_of_students[i]} (F)')
 
-print(f'Average score: {average_score:.3f}')
-print(f'Highest: {name_of_students[idx_highest_score]} ({highest_score})')
-print(f'Lowest: {name_of_students[idx_lowest_score]} ({lowest_score})')
+print(f'Average score: {average_score:.3f}') # average score (upto 3 decimal place)
+
+# get the name(s) and corresponding highest & lowest scores using indices found earlier
+highest_names = [name_of_students[i] for i in idx_highest_scores]
+lowest_names = [name_of_students[i] for i in idx_lowest_scores]
+
+print(f'Highest: {",".join(highest_names)} ({highest_score})')
+print(f'Lowest: {",".join(lowest_names)} ({lowest_score})')
+
 
 
 
