@@ -1,3 +1,4 @@
+# make separate file for each function if necessary later.
 '''
 Question 1 Write a program that asks the user to input a password and checks its strength.
 • Weak: Less than 6 characters
