@@ -22,7 +22,7 @@ Reversed: xof nworb kciuq ehT
 import string  
 
 # taking user input (a sentence)
-sentence = input("\nEnter a sentence:\t").strip()
+sentence = input("\nEnter a sentence: ").strip()
 
 # strip punctuation around word and split the sentence
 split_sentence = [word.strip(string.punctuation) for word in sentence.split()]

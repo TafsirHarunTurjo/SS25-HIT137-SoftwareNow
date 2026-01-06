@@ -36,7 +36,7 @@ ask input within given limit (2-100), otherwise give error message and ask for a
 
 """
 while True:
-    raw_input = input("Enter any value between 2 to 100 (inclusive): ")
+    raw_input = input("\nEnter any value between 2 to 100 (inclusive): ")
     try:
         limit = int(raw_input)
         if 2 <= limit <= 100:

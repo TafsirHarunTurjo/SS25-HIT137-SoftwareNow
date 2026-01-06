@@ -1,4 +1,3 @@
-# make separate file for each function if necessary later.
 '''
 Question 1 Write a program that asks the user to input a password and checks its strength.
 • Weak: Less than 6 characters
@@ -10,7 +9,7 @@ Output: "Medium password"
 '''
 
 # takes input(password) from user
-password = input("\tEnter your password.")
+password = input("\nEnter your password. ")
 
 def check_password_strength(password):
     """

@@ -24,7 +24,7 @@ Lowest: Carol (45)
 '''
 
 # taking input from user
-number_of_student = int(input('\tHow many students?(3-10)'))
+number_of_student = int(input('\nHow many students?(3-10) '))
 
 # retake input if value is greater than 10 or less than 3
 while number_of_student < 3 or number_of_student > 10:
@@ -41,21 +41,21 @@ for s in range(1,number_of_student+1):
     example: it takes Hari, but not Hari123
     """
     while True:
-        name = input(f'Student {s} name:\t')
+        name = input(f'Student {s} name: ')
         if all(char.isalpha() or char.isspace() for char in name) and name.strip(): 
             break
         else:
             print("Invalid input! Please enter letters only (no numbers or symbols).")
 
     name_of_students.append(name) # append to list
-    score = int(input(f"{name_of_students[s-1]}'s score\t"))
+    score = int(input(f"{name_of_students[s-1]}'s score "))
 
     """ 
     this loop retake score if the value is negative or greater than 100
     example: it takes score(0-100), but not 101 or -1
     """
     while score < 0 or score > 100:
-        score = int(input("Enter again.Score must be between 0 and 100(included)\t"))
+        score = int(input("Enter again.Score must be between 0 and 100(included) "))
     score_of_students.append(score) # append to list
 
 # average, highest and lowest scores
