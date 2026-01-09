@@ -1,6 +1,7 @@
-def decryption(shift1, shift2):
+def decryption(shift1, shift2, base_dir):
     try:
-        with open('encrypted_text.txt', 'r') as file:
+        read_encrytion = base_dir / "encrypted_text.txt" 
+        with open(read_encrytion , 'r', encoding= 'utf-8') as file:
             encrypted_content = file.read()
 
         decrypt_result = ""
@@ -34,11 +35,11 @@ def decryption(shift1, shift2):
             else:
                 # Non-letters unchanged
                 decrypt_result += char
-
-        with open('decrypted_text.txt', 'w') as file:
+        write_decryption = base_dir / "decrypted_text.txt" 
+        with open(write_decryption, 'w', encoding= 'utf-8') as file:
             file.write(decrypt_result)
 
-        print('Decryption completed! Decrypted text saved to "decrypted_text.txt".')
+        print(f'Decryption completed! Decrypted text saved to {write_decryption}.')
 
     except FileNotFoundError:
         print("Error: encrypted_text.txt not found.")
