@@ -1,0 +1,3 @@
+Largest Temperature Range: 24.45°C
+Station(s):
+- 48245
