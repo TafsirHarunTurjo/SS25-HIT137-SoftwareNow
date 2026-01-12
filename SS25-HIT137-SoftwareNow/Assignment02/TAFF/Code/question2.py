@@ -5,6 +5,11 @@
 # 1) Seasonal average temperature across all stations and years (Australian seasons)
 # 2) Station(s) with largest temperature range (max - min across all years/months)
 # 3) Most stable and most variable stations using standard deviation
+#
+# Outputs (as required):
+# - average_temp.txt
+# - largest_temp_range_station.txt
+# - temperature_stability_stations.txt
 
 from pathlib import Path
 import csv
@@ -26,6 +31,11 @@ SEASON_BY_MONTH = {
     "September": "Spring", "October": "Spring", "November": "Spring"
 }
 
+SEASONS_IN_ORDER = ["Summer", "Autumn", "Winter", "Spring"]
+
+# Float tolerance for tie checks
+EPS = 1e-9
+
 
 def is_missing(value: str) -> bool:
     """
@@ -34,7 +44,7 @@ def is_missing(value: str) -> bool:
     """
     if value is None:
         return True
-    v = value.strip()
+    v = str(value).strip()
     return v == "" or v.lower() == "nan"
 
 
@@ -49,8 +59,9 @@ def to_float_or_none(value: str):
 
 
 def read_all_temperatures(folder: Path) -> Tuple[
-    Dict[str, List[float]],  # station -> list of all temps across all months/years
-    Dict[str, List[float]]   # season  -> list of temps across all stations/years
+    Dict[str, List[float]],   # station_key -> list of all temps across all months/years
+    Dict[str, List[float]],   # season      -> list of temps across all stations/years
+    Dict[str, str]            # station_key -> display label (e.g., "STATION_NAME (STN_ID)")
 ]:
     """
     Reads all CSVs in folder, extracting station temps and season temps.
@@ -59,7 +70,8 @@ def read_all_temperatures(folder: Path) -> Tuple[
       STATION_NAME, STN_ID, LAT, LON, January..December
     """
     station_temps: Dict[str, List[float]] = {}
-    season_temps: Dict[str, List[float]] = {"Summer": [], "Autumn": [], "Winter": [], "Spring": []}
+    season_temps: Dict[str, List[float]] = {s: [] for s in SEASONS_IN_ORDER}
+    station_label: Dict[str, str] = {}
 
     csv_files = sorted(folder.glob("*.csv"))
     if not csv_files:
@@ -69,23 +81,38 @@ def read_all_temperatures(folder: Path) -> Tuple[
         with file_path.open("r", encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
 
-            # Basic safety: ensure month columns exist
+            if not reader.fieldnames:
+                continue
+
+            # Ensure month columns exist
             for m in MONTHS:
                 if m not in reader.fieldnames:
                     raise ValueError(f"Missing expected month column '{m}' in file: {file_path.name}")
 
-            # Station identity: use STN_ID if present; otherwise fallback to STATION_NAME
             has_id = "STN_ID" in reader.fieldnames
             has_name = "STATION_NAME" in reader.fieldnames
 
             for row in reader:
-                if has_id and row.get("STN_ID") is not None:
-                    station_key = row["STN_ID"].strip()
-                elif has_name and row.get("STATION_NAME") is not None:
-                    station_key = row["STATION_NAME"].strip()
+                stn_id = (row.get("STN_ID") or "").strip() if has_id else ""
+                stn_name = (row.get("STATION_NAME") or "").strip() if has_name else ""
+
+                # Choose a stable key:
+                # Prefer STN_ID if present, otherwise STATION_NAME
+                if stn_id:
+                    station_key = stn_id
+                elif stn_name:
+                    station_key = stn_name
                 else:
-                    # If neither exists, skip (should not happen with your dataset)
-                    continue
+                    continue  # no usable station identifier
+
+                # Build a nice display label for outputs
+                if station_key not in station_label:
+                    if stn_name and stn_id:
+                        station_label[station_key] = f"{stn_name} ({stn_id})"
+                    elif stn_name:
+                        station_label[station_key] = stn_name
+                    else:
+                        station_label[station_key] = station_key
 
                 if station_key not in station_temps:
                     station_temps[station_key] = []
@@ -97,60 +124,66 @@ def read_all_temperatures(folder: Path) -> Tuple[
                         continue  # ignore missing values
 
                     station_temps[station_key].append(temp)
-
                     season = SEASON_BY_MONTH[month]
                     season_temps[season].append(temp)
 
-    return station_temps, season_temps
+    return station_temps, season_temps, station_label
 
 
 def write_seasonal_averages(season_temps: Dict[str, List[float]], out_file: Path) -> None:
     """
     Writes seasonal average temperatures to average_temp.txt
-    Format example:
-      Summer: 28.50°C
+    Required output format example:
+      Summer: 28.5°C
     """
     lines = []
-    for season in ["Summer", "Autumn", "Winter", "Spring"]:
+    for season in SEASONS_IN_ORDER:
         temps = season_temps.get(season, [])
         if temps:
             avg = sum(temps) / len(temps)
-            lines.append(f"{season}: {avg:.2f}°C")
+            lines.append(f"{season}: {avg:.1f}°C")
         else:
-            lines.append(f"{season}: No data")
+            lines.append(f"{season}: N/A")
 
     out_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_largest_range_station(station_temps: Dict[str, List[float]], out_file: Path) -> None:
+def write_largest_range_station(
+    station_temps: Dict[str, List[float]],
+    station_label: Dict[str, str],
+    out_file: Path
+) -> None:
     """
     Finds station(s) with largest temperature range (max - min).
     Handles ties by listing all tied stations.
+
+    Required output format example:
+      Station ABC: Range 45.2°C (Max: 48.3°C, Min: 3.1°C)
     """
     best_range = -math.inf
-    best_stations = []
+    winners = []  # list of (station_key, range, max, min)
 
     for station, temps in station_temps.items():
         if not temps:
             continue
-        rng = max(temps) - min(temps)
+        mx = max(temps)
+        mn = min(temps)
+        rng = mx - mn
 
-        if rng > best_range:
+        if rng > best_range + EPS:
             best_range = rng
-            best_stations = [station]
-        elif rng == best_range:
-            best_stations.append(station)
+            winners = [(station, rng, mx, mn)]
+        elif abs(rng - best_range) <= EPS:
+            winners.append((station, rng, mx, mn))
 
-    if best_range == -math.inf:
+    if best_range == -math.inf or not winners:
         out_file.write_text("No valid temperature data found.\n", encoding="utf-8")
         return
 
-    lines = [
-        f"Largest Temperature Range: {best_range:.2f}°C",
-        "Station(s):"
-    ]
-    for st in best_stations:
-        lines.append(f"- {st}")
+    lines = []
+    for station, rng, mx, mn in sorted(winners, key=lambda x: station_label.get(x[0], x[0])):
+        label = station_label.get(station, station)
+        lines.append(f"{label}: Range {rng:.1f}°C (Max: {mx:.1f}°C, Min: {mn:.1f}°C)")
 
     out_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -159,19 +192,27 @@ def safe_std_dev(values: List[float]) -> float:
     """
     Standard deviation with safe handling:
     - If 0 or 1 values, std dev = 0.0
-    - Using population std dev (pstdev) because we treat the available dataset as the full set given.
+    - Using population std dev (pstdev) since we're using the full provided dataset.
     """
     if len(values) <= 1:
         return 0.0
     return statistics.pstdev(values)
 
 
-def write_stability(station_temps: Dict[str, List[float]], out_file: Path) -> None:
+def write_stability(
+    station_temps: Dict[str, List[float]],
+    station_label: Dict[str, str],
+    out_file: Path
+) -> None:
     """
     Finds:
     - Most stable station(s): smallest std dev
     - Most variable station(s): largest std dev
     Handles ties.
+
+    Required output format example:
+      Most Stable: Station XYZ: StdDev 2.3°C
+      Most Variable: Station DEF: StdDev 12.8°C
     """
     stdev_by_station: Dict[str, float] = {}
 
@@ -187,22 +228,20 @@ def write_stability(station_temps: Dict[str, List[float]], out_file: Path) -> No
     min_sd = min(stdev_by_station.values())
     max_sd = max(stdev_by_station.values())
 
-    most_stable = [s for s, sd in stdev_by_station.items() if sd == min_sd]
-    most_variable = [s for s, sd in stdev_by_station.items() if sd == max_sd]
+    most_stable = [s for s, sd in stdev_by_station.items() if abs(sd - min_sd) <= EPS]
+    most_variable = [s for s, sd in stdev_by_station.items() if abs(sd - max_sd) <= EPS]
 
-    lines = [
-        f"Most Stable Station(s) (Lowest Std Dev = {min_sd:.2f}):"
-    ]
-    for s in most_stable:
-        lines.append(f"- {s}")
+    lines = []
 
-    lines.append("")  # blank line
+    # Most Stable lines (one per station, same prefix, per assignment style)
+    for s in sorted(most_stable, key=lambda k: station_label.get(k, k)):
+        label = station_label.get(s, s)
+        lines.append(f"Most Stable: {label}: StdDev {stdev_by_station[s]:.1f}°C")
 
-    lines.append(
-        f"Most Variable Station(s) (Highest Std Dev = {max_sd:.2f}):"
-    )
-    for s in most_variable:
-        lines.append(f"- {s}")
+    # Most Variable lines
+    for s in sorted(most_variable, key=lambda k: station_label.get(k, k)):
+        label = station_label.get(s, s)
+        lines.append(f"Most Variable: {label}: StdDev {stdev_by_station[s]:.1f}°C")
 
     out_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -221,15 +260,15 @@ def main() -> None:
         return
 
     try:
-        station_temps, season_temps = read_all_temperatures(temps_dir)
+        station_temps, season_temps, station_label = read_all_temperatures(temps_dir)
     except Exception as e:
         print(f"ERROR while reading temperature data: {e}")
         return
 
     # Write outputs required by the assignment
     write_seasonal_averages(season_temps, avg_out)
-    write_largest_range_station(station_temps, range_out)
-    write_stability(station_temps, stability_out)
+    write_largest_range_station(station_temps, station_label, range_out)
+    write_stability(station_temps, station_label, stability_out)
 
     # Console summary (useful for marking/debugging)
     total_stations = len(station_temps)

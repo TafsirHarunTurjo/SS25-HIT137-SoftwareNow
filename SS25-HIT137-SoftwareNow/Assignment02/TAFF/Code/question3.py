@@ -1,57 +1,56 @@
 # question3.py
 # HIT137 Group Assignment 2 - Question 3
 #
-# Turtle recursive pattern:
-# For each edge:
-# 1) Divide into 3 equal parts
-# 2) Replace the middle part by two sides of an inward equilateral triangle
-# 3) Recursively apply based on depth
+# Inward indentation fractal (Koch inward notch) on each polygon side.
 
 import turtle
 
 
-def draw_recursive_edge(length: float, depth: int) -> None:
+def draw_inward_edge(length: float, depth: int) -> None:
     """
-    Draw one edge using recursion.
+    Draw one edge with inward indentation using recursion.
 
-    Base case:
-      depth == 0 -> draw a straight line
-
-    Recursive case:
-      length is split into 3 parts. The middle third is replaced with two
-      sides of an equilateral triangle pointing inward.
+    Depth 0: straight line
+    Depth >0: split into 3 parts; replace the middle third by two sides
+              of an equilateral triangle pointing inward (a notch).
     """
     if depth == 0:
         turtle.forward(length)
         return
 
-    segment = length / 3.0
+    seg = length / 3.0
 
-    # First segment
-    draw_recursive_edge(segment, depth - 1)
+    # 1st third
+    draw_inward_edge(seg, depth - 1)
 
-    # Turn to make inward triangle "notch"
+    # Inward notch (NOT the classic outward Koch bump)
     turtle.right(60)
-    draw_recursive_edge(segment, depth - 1)
+    draw_inward_edge(seg, depth - 1)
 
     turtle.left(120)
-    draw_recursive_edge(segment, depth - 1)
+    draw_inward_edge(seg, depth - 1)
 
     turtle.right(60)
-    draw_recursive_edge(segment, depth - 1)
+    draw_inward_edge(seg, depth - 1)
 
 
 def draw_polygon(sides: int, length: float, depth: int) -> None:
-    """Draw a polygon where each side is drawn using draw_recursive_edge."""
+    """
+    Draw polygon CLOCKWISE so the indentation consistently points inward.
+    """
     angle = 360.0 / sides
     for _ in range(sides):
-        draw_recursive_edge(length, depth)
-        turtle.left(angle)
+        draw_inward_edge(length, depth)
+        turtle.right(angle)   # clockwise turn
 
 
 def main() -> None:
-    # Speed up drawing for deeper recursion
-    turtle.speed(0)
+    # Slow drawing (visible)
+    # turtle.speed(3)       # 1 slowest, 10 fast, 0 instant
+    # turtle.delay(15)      # delay between steps (ms)
+    turtle.speed(10)       
+    turtle.delay(5)
+    turtle.pensize(2)
     turtle.hideturtle()
 
     try:
@@ -72,9 +71,9 @@ def main() -> None:
         print("ERROR: Recursion depth must be 0 or more.")
         return
 
-    # Position turtle to make drawing more visible
+    # Center better (roughly)
     turtle.penup()
-    turtle.goto(-length / 2, 0)
+    turtle.goto(-length / 2, length / 3)
     turtle.pendown()
 
     draw_polygon(sides, length, depth)
