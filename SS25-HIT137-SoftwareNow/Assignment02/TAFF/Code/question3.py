@@ -9,7 +9,7 @@ import turtle
 def draw_inward_edge(length: float, depth: int) -> None:
     """
     Draw one edge with inward indentation using recursion.
-
+ 
     Depth 0: straight line
     Depth >0: split into 3 parts; replace the middle third by two sides
               of an equilateral triangle pointing inward (a notch).
