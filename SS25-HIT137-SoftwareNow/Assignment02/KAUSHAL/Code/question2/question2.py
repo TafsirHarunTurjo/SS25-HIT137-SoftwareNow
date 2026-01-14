@@ -5,16 +5,24 @@ from temperature_range import *
 from temperature_stability import *
 
 def main():
-    # Get the directory where this script is located
+    """
+    Rule:
+        - Only provide suitable parameters for each function call
+    Task:
+        - Get base file path
+        - Get all csv files (apply append and concat)
+        - Call 3 functions wih suitable parameters: seasional_average, temperature_range and temperature_stability
+    """
+    # get the directory where this script is located
     base_dir = Path(__file__).resolve().parent
 
-    # Path to the temperatures folder
+    # path to the temperatures folder
     temperature_dir = base_dir / "temperatures"
 
-    # Read all CSV files dynamically
+    # read all CSV files dynamically
     csv_files = temperature_dir.glob("*.csv")
 
-    # Combine all data
+    # combine all data
     all_data = []
     for file in csv_files:
         df = pd.read_csv(file)

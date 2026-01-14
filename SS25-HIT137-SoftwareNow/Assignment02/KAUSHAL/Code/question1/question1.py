@@ -1,9 +1,19 @@
+# importing successfully for function call
 from encryption import *
 from decryption import *
 from verification import *
+# importing to get base file path
 from pathlib import Path
 
 def main():
+    """
+    Rule:
+        - Only provide suitable parameters for each function call
+    Task:
+        - Get only valid inputs from user for shift1 and shift2
+        - Get base file path
+        - Call 3 functions wih suitable parameters: encryption, decryption and verification
+    """
     base_dir = Path(__file__).resolve().parent
     while True:
         shift1_raw = input("Enter the first shift value: ")
@@ -20,7 +30,7 @@ def main():
         except ValueError:
             print("Invalid input. Please enter numbers only.\n")
 
-    # Call the functions after valid input
+    # make function call after valid inputs
     encryption(shift1_value, shift2_value, base_dir)
     decryption(shift1_value, shift2_value, base_dir)
     raw_file = base_dir/"raw_text.txt"
