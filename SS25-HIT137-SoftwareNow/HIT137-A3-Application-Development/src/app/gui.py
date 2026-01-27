@@ -13,31 +13,24 @@ class ImageEditorGUI:
     """Main GUI class for the Image Editor."""
 
     def __init__(self, root: tk.Tk) -> None:
-        """Initialize the GUI."""
         self.root = root
         self.root.title("HIT137 A3 - Image Editor")
         self.root.geometry("900x600")
 
-        # Build UI first
+        self._tk_image: ImageTk.PhotoImage | None = None
+
         self._build_layout()
 
-        # Controller (after UI exists)
         self.controller = EditorController(self)
-
-        # Menu (needs controller)
         self._build_menu()
+        self._build_controls()
 
-        # Placeholder content
         self._placeholder_label = tk.Label(
             self.image_panel, text="GUI Loaded ✅", font=("Segoe UI", 18), bg="black", fg="white"
         )
         self._placeholder_label.pack(pady=40)
 
-        # Keep reference to avoid garbage collection
-        self._tk_image: ImageTk.PhotoImage | None = None
-
     def _build_menu(self) -> None:
-        """Create menu bar."""
         menubar = tk.Menu(self.root)
 
         file_menu = tk.Menu(menubar, tearoff=0)
@@ -57,7 +50,6 @@ class ImageEditorGUI:
         self.root.config(menu=menubar)
 
     def _build_layout(self) -> None:
-        """Build basic layout including status bar."""
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -71,28 +63,52 @@ class ImageEditorGUI:
         status = tk.Label(self.root, textvariable=self.status_var, anchor="w", relief=tk.SUNKEN)
         status.pack(side=tk.BOTTOM, fill=tk.X)
 
+    def _build_controls(self) -> None:
+        title = tk.Label(self.control_panel, text="Controls", bg="#f0f0f0", font=("Segoe UI", 12, "bold"))
+        title.pack(pady=(10, 8))
+
+        btn_gray = tk.Button(self.control_panel, text="Grayscale", command=self.controller.apply_grayscale)
+        btn_gray.pack(fill=tk.X, padx=10, pady=5)
+
+        blur_lbl = tk.Label(self.control_panel, text="Blur Intensity", bg="#f0f0f0")
+        blur_lbl.pack(padx=10, pady=(15, 5), anchor="w")
+
+        self.blur_var = tk.IntVar(value=0)
+        blur_slider = tk.Scale(
+            self.control_panel,
+            from_=0,
+            to=10,
+            orient=tk.HORIZONTAL,
+            variable=self.blur_var,
+            command=self._on_blur_change,
+        )
+        blur_slider.pack(fill=tk.X, padx=10)
+
+        reset_blur = tk.Button(self.control_panel, text="Reset Blur", command=self._reset_blur)
+        reset_blur.pack(fill=tk.X, padx=10, pady=8)
+
+    def _on_blur_change(self, _value: str) -> None:
+        self.controller.apply_blur(self.blur_var.get())
+
+    def _reset_blur(self) -> None:
+        self.blur_var.set(0)
+        self.controller.reset_blur()
+
     def update_status(self, text: str) -> None:
-        """Update the status bar."""
         self.status_var.set(text)
 
     def display_image(self, img) -> None:
-        """Display an OpenCV BGR image in the image panel."""
         if img is None:
             return
 
-        # Remove placeholder label if present
         if hasattr(self, "_placeholder_label") and self._placeholder_label.winfo_exists():
             self._placeholder_label.destroy()
 
-        # Convert BGR -> RGB -> PIL -> PhotoImage
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb)
 
-        # Fit image into the panel (simple scale-to-fit)
         panel_w = max(1, self.image_panel.winfo_width())
         panel_h = max(1, self.image_panel.winfo_height())
-
-        # If geometry not ready, force update then re-check
         if panel_w == 1 and panel_h == 1:
             self.root.update_idletasks()
             panel_w = max(1, self.image_panel.winfo_width())

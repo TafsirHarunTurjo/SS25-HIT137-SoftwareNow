@@ -1,4 +1,7 @@
-"""Undo/Redo history manager."""
+"""Undo/Redo history manager.
+
+Stores image states as numpy arrays. Provides a clean API for undo/redo.
+"""
 
 from __future__ import annotations
 
@@ -7,24 +10,51 @@ import numpy as np
 
 
 class HistoryManager:
-    """Manages undo and redo stacks for image states."""
+    """Manages undo/redo stacks for image states."""
 
     def __init__(self) -> None:
         self._undo: List[np.ndarray] = []
         self._redo: List[np.ndarray] = []
 
     def clear(self) -> None:
+        """Clear all history."""
         self._undo.clear()
         self._redo.clear()
 
+    def clear_redo(self) -> None:
+        """Clear redo history when a new action occurs."""
+        self._redo.clear()
+
+    def undo_count(self) -> int:
+        return len(self._undo)
+
+    def redo_count(self) -> int:
+        return len(self._redo)
+
     def push_undo(self, img: np.ndarray) -> None:
+        """Push a state onto the undo stack."""
+        if img is None:
+            return
         self._undo.append(img.copy())
 
-    def pop_undo(self) -> Optional[np.ndarray]:
-        return self._undo.pop() if self._undo else None
+    def undo(self, current: np.ndarray) -> Optional[np.ndarray]:
+        """Undo to the previous state.
 
-    def push_redo(self, img: np.ndarray) -> None:
-        self._redo.append(img.copy())
+        Moves current -> redo stack and returns previous state.
+        """
+        if not self._undo:
+            return None
+        if current is not None:
+            self._redo.append(current.copy())
+        return self._undo.pop()
 
-    def pop_redo(self) -> Optional[np.ndarray]:
-        return self._redo.pop() if self._redo else None
+    def redo(self, current: np.ndarray) -> Optional[np.ndarray]:
+        """Redo to the next state.
+
+        Moves current -> undo stack and returns next state.
+        """
+        if not self._redo:
+            return None
+        if current is not None:
+            self._undo.append(current.copy())
+        return self._redo.pop()
