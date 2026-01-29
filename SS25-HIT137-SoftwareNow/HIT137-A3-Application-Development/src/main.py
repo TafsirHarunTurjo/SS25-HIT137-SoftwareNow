@@ -8,7 +8,6 @@ from src.app.gui import ImageEditorGUI
 
 
 def main() -> None:
-    """Launch the Image Editor application."""
     root = tk.Tk()
     ImageEditorGUI(root)
     root.mainloop()

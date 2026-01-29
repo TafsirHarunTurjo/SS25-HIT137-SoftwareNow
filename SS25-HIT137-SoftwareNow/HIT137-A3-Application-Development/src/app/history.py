@@ -1,6 +1,6 @@
 """Undo/Redo history manager.
 
-Stores image states as numpy arrays. Provides a clean API for undo/redo.
+This manager stores full image states (numpy arrays) for undo/redo.
 """
 
 from __future__ import annotations
@@ -17,44 +17,38 @@ class HistoryManager:
         self._redo: List[np.ndarray] = []
 
     def clear(self) -> None:
-        """Clear all history."""
+        """Clear undo and redo stacks."""
         self._undo.clear()
         self._redo.clear()
 
     def clear_redo(self) -> None:
-        """Clear redo history when a new action occurs."""
+        """Clear redo stack when a new action happens."""
         self._redo.clear()
 
-    def undo_count(self) -> int:
-        return len(self._undo)
-
-    def redo_count(self) -> int:
-        return len(self._redo)
-
     def push_undo(self, img: np.ndarray) -> None:
-        """Push a state onto the undo stack."""
-        if img is None:
-            return
+        """Push current state to undo stack."""
         self._undo.append(img.copy())
 
-    def undo(self, current: np.ndarray) -> Optional[np.ndarray]:
-        """Undo to the previous state.
+    def can_undo(self) -> bool:
+        return len(self._undo) > 0
 
-        Moves current -> redo stack and returns previous state.
-        """
+    def can_redo(self) -> bool:
+        return len(self._redo) > 0
+
+    def undo(self, current: np.ndarray) -> Optional[np.ndarray]:
+        """Undo and return previous state; current moves to redo."""
         if not self._undo:
             return None
-        if current is not None:
-            self._redo.append(current.copy())
+        self._redo.append(current.copy())
         return self._undo.pop()
 
     def redo(self, current: np.ndarray) -> Optional[np.ndarray]:
-        """Redo to the next state.
-
-        Moves current -> undo stack and returns next state.
-        """
+        """Redo and return next state; current moves to undo."""
         if not self._redo:
             return None
-        if current is not None:
-            self._undo.append(current.copy())
+        self._undo.append(current.copy())
         return self._redo.pop()
+
+    def counts(self) -> tuple[int, int]:
+        """Return (undo_count, redo_count)."""
+        return (len(self._undo), len(self._redo))

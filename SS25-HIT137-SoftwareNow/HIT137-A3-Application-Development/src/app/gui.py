@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import simpledialog
+
 from PIL import Image, ImageTk
 import cv2
 
@@ -15,7 +17,7 @@ class ImageEditorGUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("HIT137 A3 - Image Editor")
-        self.root.geometry("900x600")
+        self.root.geometry("1050x680")
 
         self._tk_image: ImageTk.PhotoImage | None = None
 
@@ -26,9 +28,15 @@ class ImageEditorGUI:
         self._build_controls()
 
         self._placeholder_label = tk.Label(
-            self.image_panel, text="GUI Loaded ✅", font=("Segoe UI", 18), bg="black", fg="white"
+            self.image_panel,
+            text="Open an image from File → Open",
+            font=("Segoe UI", 16),
+            bg="black",
+            fg="white",
         )
         self._placeholder_label.pack(pady=40)
+
+    # ---------------- UI build ----------------
 
     def _build_menu(self) -> None:
         menubar = tk.Menu(self.root)
@@ -43,6 +51,8 @@ class ImageEditorGUI:
         edit_menu = tk.Menu(menubar, tearoff=0)
         edit_menu.add_command(label="Undo", command=self.controller.undo)
         edit_menu.add_command(label="Redo", command=self.controller.redo)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Restore Original", command=self.controller.restore_original)
 
         menubar.add_cascade(label="File", menu=file_menu)
         menubar.add_cascade(label="Edit", menu=edit_menu)
@@ -53,7 +63,7 @@ class ImageEditorGUI:
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.control_panel = tk.Frame(self.main_frame, width=220, bg="#f0f0f0")
+        self.control_panel = tk.Frame(self.main_frame, width=280, bg="#f0f0f0")
         self.control_panel.pack(side=tk.LEFT, fill=tk.Y)
 
         self.image_panel = tk.Frame(self.main_frame, bg="black")
@@ -67,32 +77,98 @@ class ImageEditorGUI:
         title = tk.Label(self.control_panel, text="Controls", bg="#f0f0f0", font=("Segoe UI", 12, "bold"))
         title.pack(pady=(10, 8))
 
-        btn_gray = tk.Button(self.control_panel, text="Grayscale", command=self.controller.apply_grayscale)
-        btn_gray.pack(fill=tk.X, padx=10, pady=5)
+        # --- Buttons ---
+        tk.Button(self.control_panel, text="Grayscale", command=self.controller.apply_grayscale).pack(fill=tk.X, padx=10, pady=4)
+        tk.Button(self.control_panel, text="Edge Detection", command=self.controller.apply_edge).pack(fill=tk.X, padx=10, pady=4)
 
-        blur_lbl = tk.Label(self.control_panel, text="Blur Intensity", bg="#f0f0f0")
-        blur_lbl.pack(padx=10, pady=(15, 5), anchor="w")
+        tk.Label(self.control_panel, text="Rotate", bg="#f0f0f0", font=("Segoe UI", 10, "bold")).pack(padx=10, pady=(12, 2), anchor="w")
+        rot_row = tk.Frame(self.control_panel, bg="#f0f0f0")
+        rot_row.pack(fill=tk.X, padx=10)
+        tk.Button(rot_row, text="90°", command=lambda: self.controller.rotate(90)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        tk.Button(rot_row, text="180°", command=lambda: self.controller.rotate(180)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        tk.Button(rot_row, text="270°", command=lambda: self.controller.rotate(270)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
 
-        self.blur_var = tk.IntVar(value=0)
-        blur_slider = tk.Scale(
-            self.control_panel,
+        tk.Label(self.control_panel, text="Flip", bg="#f0f0f0", font=("Segoe UI", 10, "bold")).pack(padx=10, pady=(12, 2), anchor="w")
+        flip_row = tk.Frame(self.control_panel, bg="#f0f0f0")
+        flip_row.pack(fill=tk.X, padx=10)
+        tk.Button(flip_row, text="Horizontal", command=lambda: self.controller.flip("horizontal")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        tk.Button(flip_row, text="Vertical", command=lambda: self.controller.flip("vertical")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+
+        tk.Button(self.control_panel, text="Resize...", command=self._resize_dialog).pack(fill=tk.X, padx=10, pady=(12, 6))
+        tk.Button(self.control_panel, text="Restore Original", command=self.controller.restore_original).pack(fill=tk.X, padx=10, pady=(0, 10))
+
+        # --- Sliders (commit-on-release) ---
+        self._make_slider(
+            name="blur",
+            label="Blur (0..10)",
             from_=0,
             to=10,
-            orient=tk.HORIZONTAL,
-            variable=self.blur_var,
-            command=self._on_blur_change,
+            default=0,
         )
-        blur_slider.pack(fill=tk.X, padx=10)
+        self._make_slider(
+            name="brightness",
+            label="Brightness (-100..100)",
+            from_=-100,
+            to=100,
+            default=0,
+        )
+        self._make_slider(
+            name="contrast",
+            label="Contrast (0..200 => 0.1..2.0)",
+            from_=0,
+            to=200,
+            default=100,
+        )
 
-        reset_blur = tk.Button(self.control_panel, text="Reset Blur", command=self._reset_blur)
-        reset_blur.pack(fill=tk.X, padx=10, pady=8)
+    def _make_slider(self, name: str, label: str, from_: int, to: int, default: int) -> None:
+        tk.Label(self.control_panel, text=label, bg="#f0f0f0").pack(padx=10, pady=(10, 2), anchor="w")
 
-    def _on_blur_change(self, _value: str) -> None:
-        self.controller.apply_blur(self.blur_var.get())
+        var = tk.IntVar(value=default)
+        slider = tk.Scale(
+            self.control_panel,
+            from_=from_,
+            to=to,
+            orient=tk.HORIZONTAL,
+            variable=var,
+            command=lambda v, n=name: self.controller.slider_preview(n, int(float(v))),
+        )
+        slider.pack(fill=tk.X, padx=10)
 
-    def _reset_blur(self) -> None:
-        self.blur_var.set(0)
-        self.controller.reset_blur()
+        slider.bind("<ButtonPress-1>", lambda _e, n=name: self.controller.slider_begin(n))
+        slider.bind("<ButtonRelease-1>", lambda _e, n=name: self.controller.slider_commit(n))
+
+        tk.Button(
+            self.control_panel,
+            text=f"Reset {name.title()}",
+            command=lambda n=name, s=slider, d=default: self._reset_slider(n, s, d),
+        ).pack(fill=tk.X, padx=10, pady=(4, 0))
+
+        setattr(self, f"{name}_var", var)
+        setattr(self, f"{name}_slider", slider)
+        setattr(self, f"{name}_default", default)
+
+    def _reset_slider(self, name: str, slider: tk.Scale, default: int) -> None:
+        slider.set(default)
+        self.controller.slider_reset(name)
+
+    def reset_all_controls(self) -> None:
+        """Reset slider UI values to defaults (called after open/restore)."""
+        for name in ("blur", "brightness", "contrast"):
+            slider = getattr(self, f"{name}_slider", None)
+            default = getattr(self, f"{name}_default", None)
+            if slider is not None and default is not None:
+                slider.set(default)
+
+    def _resize_dialog(self) -> None:
+        w = simpledialog.askinteger("Resize", "Enter new width (px):", minvalue=1)
+        if w is None:
+            return
+        h = simpledialog.askinteger("Resize", "Enter new height (px):", minvalue=1)
+        if h is None:
+            return
+        self.controller.resize_to(w, h)
+
+    # ---------------- UI updates ----------------
 
     def update_status(self, text: str) -> None:
         self.status_var.set(text)
